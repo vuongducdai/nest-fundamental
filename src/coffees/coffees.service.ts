@@ -1,42 +1,49 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Coffee } from './entities/coffee.entity';
 import { UpdateCoffeeDto } from './dto/update-coffee.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreateCoffeeDto } from './dto/create-coffee.dto';
 
 @Injectable()
 export class CoffeesService {
-  private coffees: Coffee[] = [
-    { id: 1, name: 'Espresso', brand: 'Lavazza', flavors: ['bold', 'intense'] },
-    { id: 2, name: 'Cappuccino', brand: 'Illy', flavors: ['creamy', 'smooth'] },
-    { id: 3, name: 'Americano', brand: 'Starbucks', flavors: ['mild', 'balanced'] },
-    { id: 4, name: 'Latte', brand: 'Blue Bottle', flavors: ['sweet', 'milky'] },
-    { id: 5, name: 'Mocha', brand: 'Intelligentsia', flavors: ['chocolate', 'rich'] }
-  ];
+  constructor(
+    @InjectRepository(Coffee)
+    private readonly coffeeRepository: Repository<Coffee>,
+  ) {}
 
-  findAll(): Coffee[] {
-    return this.coffees;
+  findAll(): Promise<Coffee[]> {
+    return this.coffeeRepository.find();
   }
 
-  findOne(id: string): Coffee {
-    const coffee = this.coffees.find(coffee => coffee.id === +id);
+  async findOne(id: string): Promise<Coffee> {
+    const coffee = await this.coffeeRepository.findOne({ where: { id: +id } });
     if (!coffee) {
       throw new NotFoundException(`Coffee #${id} not found`);
     }
     return coffee;
   }
 
-  update(id: string, updateCoffeeDto: UpdateCoffeeDto){
-    const coffee = this.findOne(id);
-    this.coffees = this.coffees.map(coffee => coffee.id === +id ? {...coffee, ...updateCoffeeDto} : coffee);
-    return coffee;
+  async update(id: string, updateCoffeeDto: UpdateCoffeeDto): Promise<Coffee> {
+    const coffee = await this.coffeeRepository.preload({
+      id: +id,
+      ...updateCoffeeDto,
+    });
+
+    if (!coffee) {
+      throw new NotFoundException(`Coffee #${id} not found`);
+    }
+
+    return this.coffeeRepository.save(coffee);
   }
 
-  create(createCoffeeDto: Partial<Coffee>): Coffee {
-    const newCoffee: Coffee = {
-      id: this.coffees.length + 1,
-      flavors: [],
-      ...createCoffeeDto
-    } as Coffee;
-    this.coffees.push(newCoffee);
-    return newCoffee;
+  async create(createCoffeeDto: CreateCoffeeDto): Promise<Coffee> {
+    const newCoffee = this.coffeeRepository.create(createCoffeeDto);
+    return this.coffeeRepository.save(newCoffee);
+  }
+
+  async remove(id: string) {
+    const coffee = await this.findOne(id);
+    return this.coffeeRepository.remove(coffee);
   }
 }
