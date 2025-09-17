@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { CoffeesService } from './coffees.service';
+import { CreateCoffeeDto } from './dto/create-coffee.dto';
+import { UpdateCoffeeDto } from './dto/update-coffee.dto';
 
 @Controller('coffees')
 export class CoffeesController {
@@ -15,8 +17,13 @@ export class CoffeesController {
     return this.coffeesService.findOne(id);
   }
 
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateCoffeeDto: UpdateCoffeeDto){
+    return this.coffeesService.update(id, updateCoffeeDto);
+  }
+
   @Post()
-  create(@Body() body){
-    return this.coffeesService.create(body);
+  create(@Body() createCoffeeDto: CreateCoffeeDto){
+    return this.coffeesService.create(createCoffeeDto);
   }
 }
